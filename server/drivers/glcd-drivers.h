@@ -41,7 +41,7 @@ int glcd_rnx16_init(Driver *drvthis);
 #define GLCD_CT_GLCD2USB	4
 #define GLCD_CT_X11		5
 #define GLCD_CT_PICOLCDGFX	6
-#define GLCD_CT_RNX16 7
+#define GLCD_CT_RNX16 		7
 
 /** Structure linking symbolic names to initialization routines */
 typedef struct ConnectionMapping {
