@@ -328,6 +328,32 @@ AC_SUBST(LIBFTDI_LIBS)
 AC_SUBST(LIBFTDI_CFLAGS)
 
 dnl ######################################################################
+dnl libgpiod support
+dnl ######################################################################
+AC_MSG_CHECKING([if libgpiod support has been enabled]);
+AC_ARG_ENABLE(libgpiod,
+	[AS_HELP_STRING([--disable-libgpiod],[disable GPIO support using libgpiod])],
+	[ if test "$enableval" != "no"; then
+		enable_libgpiod=yes
+	fi ],
+	[ enable_libgpiod=yes ]
+)
+AC_MSG_RESULT($enable_libgpiod)
+
+if test "$enable_libgpiod" = "yes"; then
+	ifdef([PKG_CHECK_MODULES],
+		[PKG_CHECK_MODULES(LIBGPIOD, [libgpiod2],
+			[AC_DEFINE(HAVE_LIBGPIOD, [1], [Define to 1 if you have libgpiod])],
+			[PKG_CHECK_MODULES(LIBGPIOD, [libgpiod],
+				[AC_DEFINE(HAVE_LIBGPIOD, [1], [Define to 1 if you have libgpiod])],
+				[ enable_libgpiod=no ])],
+		)],
+		[AC_MSG_WARN([pkg-config not (fully) installed; drivers requiring libgpiod may not be built])])
+fi
+AC_SUBST(LIBGPIOD_LIBS)
+AC_SUBST(LIBGPIOD_CFLAGS)
+
+dnl ######################################################################
 dnl X11 library support
 dnl ######################################################################
 AC_MSG_CHECKING([if X11 support has been enabled]);
