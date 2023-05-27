@@ -1,6 +1,7 @@
-/** \file server/drivers/glcd-glcd-rnx16.c
- * Driver for the oled panel in the  from mini-box.com.  Based on
+/** \file server/drivers/glcd-rnx16.c
+ * Driver for the oled panel in the Netgear RN316/RN516  Based on
  * kernel/patches/321-drivers-add-new-readynas-io-and-readynas-led-drivers.patch
+ * and glcd-picolcdgfx.c
  */
 
 /*-
