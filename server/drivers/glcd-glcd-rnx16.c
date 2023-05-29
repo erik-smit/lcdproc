@@ -185,6 +185,10 @@ glcd_rnx16_blit(PrivateData *p)
 	spi_send_cmd(p, 0x40);
 
 	for (page = 0; page < 4; page ++) {
+		int offset = (128 * page);
+		if (memcmp((p->framebuf.data) + offset, (ct_data->backingstore) + offset, 128) == 0)
+			continue;
+
 		gpiod_line_set_value(ct_data->cs, 0);
 		gpiod_line_set_value(ct_data->dc, 0);
 
@@ -195,7 +199,7 @@ glcd_rnx16_blit(PrivateData *p)
 		gpiod_line_set_value(ct_data->dc, 1);
 
 		for (int i = 0; i < 128; i++) {
-			spi_send_data(p, *((p->framebuf.data) + (128 * page) + i));
+			spi_send_data(p, *((p->framebuf.data) + offset + i));
 		}
 	}
 
