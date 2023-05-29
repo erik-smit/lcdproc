@@ -49,7 +49,7 @@ typedef struct glcd_rnx16_data {
 	int keytimeout;
 
 	unsigned char *backingstore;
-} CT_picolcdgfx_data;
+} CT_rnx16_data;
 
 /* Prototypes */
 void glcd_rnx16_blit(PrivateData *p);
@@ -59,7 +59,7 @@ void glcd_picolcdgfx_set_contrast(PrivateData *p, int value);
 
 /* Local functions */
 void spi_send(PrivateData *p, unsigned char c, bool cmd) {
-	CT_picolcdgfx_data *ct_data = (CT_picolcdgfx_data *) p->ct_data;
+	CT_rnx16_data *ct_data = (CT_rnx16_data *) p->ct_data;
 	unsigned char mask = 0x80;
 
 	gpiod_line_set_value(ct_data->cs, 0);
@@ -94,13 +94,7 @@ int
 glcd_rnx16_init(Driver *drvthis)
 {
 	PrivateData *p = (PrivateData *) drvthis->private_data;
-	CT_picolcdgfx_data *ct_data;
-
-	char driver[1024];
-	char product[1024];
-	char manufacturer[1024];
-	char serialnumber[1024];
-	int ret;
+	CT_rnx16_data *ct_data;
 
 	report(RPT_INFO, "GLCD/rnx16: intializing");
 
@@ -111,7 +105,7 @@ glcd_rnx16_init(Driver *drvthis)
 	// p->glcd_functions->set_contrast = glcd_picolcdgfx_set_contrast;
 
 	/* Allocate memory structures */
-	ct_data = (CT_picolcdgfx_data *) calloc(1, sizeof(CT_picolcdgfx_data));
+	ct_data = (CT_rnx16_data *) calloc(1, sizeof(CT_rnx16_data));
 	if (ct_data == NULL) {
 		report(RPT_ERR, "GLCD/rnx16: error allocating connection data");
 		return -1;
@@ -182,22 +176,15 @@ glcd_rnx16_blit(PrivateData *p)
 {
 	report(RPT_DEBUG, "%s()", __FUNCTION__);
 
-	CT_picolcdgfx_data *ct_data = (CT_picolcdgfx_data *) p->ct_data;
+	CT_rnx16_data *ct_data = (CT_rnx16_data *) p->ct_data;
 
-	int offset;
-	int index;
-	unsigned char page, line;
-
+	unsigned char page;
 	unsigned int xpix = 4;
 
-	// 128 * 64 = 32 * 8?
-	
 	spi_send_cmd(p, 0xA6);
 	spi_send_cmd(p, 0x40);
 
-	for (page = 0; page < 2; page ++) {
-		offset = page;
-		int i;
+	for (page = 0; page < 4; page ++) {
 		gpiod_line_set_value(ct_data->cs, 0);
 		gpiod_line_set_value(ct_data->dc, 0);
 
@@ -207,49 +194,10 @@ glcd_rnx16_blit(PrivateData *p)
 
 		gpiod_line_set_value(ct_data->dc, 1);
 
-		for (i = 0; i < 128; i++) {
+		for (int i = 0; i < 128; i++) {
 			spi_send_data(p, *((p->framebuf.data) + (128 * page) + i));
 		}
 	}
-
-	// for (cs = 0; cs < 4; cs++) {
-	// 	unsigned char chipsel = (cs << 2);
-	// 	for (line = 0; line < 8; line++) {
-	// 		offset = line * RNX16_WIDTH + cs * 64;
-	// 		if (memcmp((p->framebuf.data) + offset, (ct_data->backingstore) + offset, 64) == 0)
-	// 			continue;
-
-	// 		cmd3[0] = PICOLCDGFX_OUT_CMD_DATA;
-	// 		cmd3[1] = chipsel;
-	// 		cmd3[2] = 0x02;
-	// 		cmd3[3] = 0x00;
-	// 		cmd3[4] = 0x00;
-	// 		cmd3[5] = 0xb8 | line;
-	// 		cmd3[6] = 0x00;
-	// 		cmd3[7] = 0x00;
-	// 		cmd3[8] = 0x40;
-	// 		cmd3[9] = 0x00;
-	// 		cmd3[10] = 0x00;
-	// 		cmd3[11] = 32;
-
-	// 		cmd4[0] = PICOLCDGFX_OUT_DATA;
-	// 		cmd4[1] = chipsel | 0x01;
-	// 		cmd4[2] = 0x00;
-	// 		cmd4[3] = 0x00;
-	// 		cmd4[4] = 32;
-
-	// 		for (index = 0; index < 32; index++) {
-	// 			cmd3[12 + index] = *((p->framebuf.data) + offset + index) ^ ct_data->inverted;
-	// 		}
-
-	// 		for (index = 32; index < 64; index++) {
-	// 			cmd4[5 + (index - 32)] = *((p->framebuf.data) + offset + index) ^ ct_data->inverted;
-	// 		}
-
-	// 		// picolcdgfx_write(ct_data->lcd, cmd3, 44);
-	// 		// picolcdgfx_write(ct_data->lcd, cmd4, 37);
-	// 	}
-	// }
 
 	memcpy(ct_data->backingstore, p->framebuf.data, p->framebuf.size);
 }
@@ -261,7 +209,7 @@ void
 glcd_rnx16_close(PrivateData *p)
 {
 	if (p->ct_data != NULL) {
-		CT_picolcdgfx_data *ct_data = (CT_picolcdgfx_data *) p->ct_data;
+		CT_rnx16_data *ct_data = (CT_rnx16_data *) p->ct_data;
 
 		if (ct_data->chip != NULL) {
 			gpiod_chip_close(ct_data->chip);
@@ -280,33 +228,33 @@ glcd_rnx16_close(PrivateData *p)
 /**
  * API: Set the backlight brightness.
  */
-void
-glcd_picolcdgfx_set_backlight(PrivateData *p, int state)
-{
-	CT_picolcdgfx_data *ct_data = (CT_picolcdgfx_data *) p->ct_data;
-	int promille = (state == BACKLIGHT_ON) ? p->brightness : p->offbrightness;
-	unsigned char cmd[2];
+// void
+// glcd_picolcdgfx_set_backlight(PrivateData *p, int state)
+// {
+// 	CT_rnx16_data *ct_data = (CT_rnx16_data *) p->ct_data;
+// 	int promille = (state == BACKLIGHT_ON) ? p->brightness : p->offbrightness;
+// 	unsigned char cmd[2];
 
-	// cmd[0] = PICOLCDGFX_OUT_BACKLIGHT;
-	// cmd[1] = (promille * 255 / 1000);
+// 	// cmd[0] = PICOLCDGFX_OUT_BACKLIGHT;
+// 	// cmd[1] = (promille * 255 / 1000);
 
-	// picolcdgfx_write(ct_data->lcd, cmd, 2);
-}
+// 	// picolcdgfx_write(ct_data->lcd, cmd, 2);
+// }
 
 
 /**
  * API: Change LCD contrast.
  */
-void
-glcd_picolcdgfx_set_contrast(PrivateData *p, int value)
-{
-	CT_picolcdgfx_data *ct_data = (CT_picolcdgfx_data *) p->ct_data;
-	// unsigned char cmd[2] = {PICOLCDGFX_OUT_CONTRAST};
+// void
+// glcd_picolcdgfx_set_contrast(PrivateData *p, int value)
+// {
+// 	CT_rnx16_data *ct_data = (CT_rnx16_data *) p->ct_data;
+// 	// unsigned char cmd[2] = {PICOLCDGFX_OUT_CONTRAST};
 
-	/* I believe hardware contrast values are 200 to 255.  Where a higher
-	 * contrast setting sends a lower value to the deivce. (S. Meharg) */
-	unsigned char val = ((1000 - value) * (255 - 200)) / 1000 + 200;
+// 	/* I believe hardware contrast values are 200 to 255.  Where a higher
+// 	 * contrast setting sends a lower value to the deivce. (S. Meharg) */
+// 	unsigned char val = ((1000 - value) * (255 - 200)) / 1000 + 200;
 
-	// cmd[1] = val;
-	// picolcdgfx_write(ct_data->lcd, cmd, 2);
-}
+// 	// cmd[1] = val;
+// 	// picolcdgfx_write(ct_data->lcd, cmd, 2);
+// }
